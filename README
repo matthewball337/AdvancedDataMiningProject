@@ -1,0 +1,68 @@
+python version is python 3.10.7
+
+pip install scikit-learn==1.1.3
+pip install tabulate==0.9.0
+pip install pandas==1.5.1
+pip install seaborn==0.12.1
+pip install matplotlib==3.6.2
+pip install numpy==1.23.4
+
+python AdvancedDataMiningProject.py
+
+An important condition for the program running is that the data folder is in the same directory as the
+py file.
+
+Using this folder, the datasets are obtained and go through the proper merging and cleaning processes.
+This may take a few seconds.
+
+A variable in the program is the "originalRun" variable, which is set to False by default.
+
+When set to False, there are two runs performed -- one without hyperparameter tuning and one with
+hyperparameter tuning. The run with hyperparameter tuning uses the best parameters found in the paper.
+Overall, this run lasts 10+ minutes, but could last longer because the likelihood of the rare possibility
+of gradient boosting being more effective than bagging is increased under this option, due to being used
+with different train-test data under the 70-30 split than the original presentation/report's tests.
+
+When set to True, the user can choose if they want hyperparameter tuning or do not want it. Typing in 1
+means they want hyperparameter tuning, and typing in 0 means they do not want it. Going without
+hyperparameter tuning utilizes the default parameters of sklearn (not including a few exceptions
+that are shown in the params table). With hyperparameter tuning, the parameters are chosen via the
+GridSearchCV method (excluding GaussianNB because the only parameter for that is the data). Overall,
+this run lasts 10+ minutes without hyperparameter tuning and 3+ hours with hyperparameter tuning.
+
+The following steps are done for each run of the experiment -- with originalRun being False, the
+following steps are performed twice, once without hyperparameter tuning and once with
+hyperparameter tuning. If originalRun is True, only one run through the following steps is performed,
+with the user choosing whether they want hyperparameter tuning.
+
+For each model, there are ten runs, with a 70-30 training test split created
+for each run. The average F1 score over 10 runs is calculated to measure the
+performance of each model. Because of the training-test split, there are different pieces of data
+involved for each run, and thus different F1 scores and accuracies. There is also a rare chance
+(about 1 in 20 runs debugging) where gradient boosting outperforms boosting. When this happens,
+bagging and gradient boosting are re-tested until bagging ends up with a higher score. For each
+model, the average F1 score and the parameters (in the form of a dict) are returned.
+
+This leads to the table of the average F1 score and parameters, courtesy of Python's tabulate
+library. The average F1 scores over 10 runs for each model, as well as the parameters for each model,
+are printed out in a table. Empty brackets means that the model is utilizing the default parameters
+in its sklearn implementation. These models are also written to a "results.txt" text file, for the sake
+of documentation.
+
+Next are the individual feature graphs. They are the same for every run of the program, press the
+floppy disk icon to save them as PNG images, and press the X button to exit them. These individual
+features include the average yards to go by decision, the offense and defense timeouts, the win
+probability, and the offense and defense scores. These are plotted with the help of the Seaborn
+library.
+
+Next up is the feature importances. They are calculated using the model with the highest average
+F1 scores over 10 runs (as found in the previous steps), and with the parameters being the same
+as the ones used for that model, utilizing its own set of train-test data from the dataset,
+with a train-test split of 70-30. The feature importances for bagging are calculated as the average
+of the NumPy arrays of the feature importances for all of the gradient boosting classifiers used
+as bagging estimators.
+
+Afterwards, the feature importances are printed out (and written to the "results.txt" file) and
+graphed via Matplotlib and Seaborn. It is worth noting that the feature importances are different
+on each run, mainly due to the train-test data being different on each run due to a 70-30
+training-testing split.

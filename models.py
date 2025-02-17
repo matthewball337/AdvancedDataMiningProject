@@ -1,125 +1,166 @@
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegressionCV, RidgeClassifier
+from sklearn.ensemble import GradientBoostingClassifier, BaggingClassifier
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.metrics import f1_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from imblearn.over_sampling import SMOTE
-from utils import get_average_f1
+from utils import get_average_f1, create_X_y
+import pandas as pd
 
 '''
-References: 
+References:
 
 1) Hyperparameter tuning reference: https://machinelearningmastery.com/hyperparameters-for-classification-machine-learning-algorithms/
-2) 
+2) Other hyperparameter tuning reference: https://neptune.ai/blog/hyperparameter-tuning-in-python-complete-guide#bayesianoptimization
+3) Linear Discriminant Analysis hyperparameter tuning: https://machinelearningmastery.com/linear-discriminant-analysis-with-python/
+4) Some pieces of code reused from Fall 2022 Data Mining project
 
 '''
 
-# This creates a random forest classifier model with or without hypertuning, 
-# splits the training/test data and averages the f1 score over 10 runs
-def random_forest_accuracy(df,tuning=True):
-    # Hyper parameter tuning code, it takes a while to run so we commented it out.
-    # The best parameters are specified and ran below when tuning is set to true
-    '''
-    param_grid = {
-         'max_depth': [12, 15, 20, 25],
-         'max_features': [12, 15, 25],
-         'min_samples_leaf': [1, 3, 5],
-         'n_estimators': [75, 100, 150]
-    }
+#This creates a Ridge Classifier model with or without hypertuning,
+#splits the training/test data and averages the f1 score over 10 runs
+def ridge_classifier_accuracy(df, tuning, originalRun):
+    if tuning:
+        if originalRun:
+            X, y = create_X_y(df)
+            X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.3)
+            param_grid_rc = {
+                'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+            }
+            rc_tuned = RidgeClassifier()
+            grid_search_rc = GridSearchCV(estimator=rc_tuned, param_grid=param_grid_rc, n_jobs=-1, cv=3)
+            grid_search_rc.fit(X_train, Y_train)
+            print(grid_search_rc.best_params_)
+            model = RidgeClassifier(**grid_search_rc.best_params_)
+            params = grid_search_rc.best_params_
+        else:
+            params = dict(alpha=0.1)
+            print(params)
+            model = RidgeClassifier(**params)
+    else:
+        model = RidgeClassifier()
+        params = {}
+        
+    return get_average_f1(model, df), params
 
-    rf = RandomForestClassifier()
-    grid_search = GridSearchCV(estimator = rf, param_grid = param_grid, cv=3)
-    grid_search.fit(X_train, y_train)
-    print(grid_search.best_params_)
-    '''
+        
+#This creates a Naive Bayes model with or without hypertuning,
+#splits the training/test data and averages the f1 score over 10 runs
 
-    print('Evaluating random forest model')
-    model = RandomForestClassifier(max_depth=12, max_features=25, min_samples_leaf=1, n_estimators=150) if tuning else RandomForestClassifier()
-    return get_average_f1(model,df)
+def naive_bayes_accuracy(df):
+    model = GaussianNB()
+    return get_average_f1(model,df), dict()
+    
+#This creates the Linear Discriminative Analysis model with or without hypertuning,
+#splits the training/test data and averages the f1 score over 10 runs
 
+def lda_accuracy(df, tuning, originalRun):
+    if tuning:
+        if originalRun:
+            X, y = create_X_y(df)
+            X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.3)
+            param_grid_lda = {
+                'solver': ['svd', 'lsqr'],
+            }
+            lda_tuned = LinearDiscriminantAnalysis()
+            grid_search_lda = GridSearchCV(estimator=lda_tuned, param_grid=param_grid_lda, cv=3)
+            grid_search_lda.fit(X_train, Y_train)
+            print(grid_search_lda.best_params_)
+            model = LinearDiscriminantAnalysis(**grid_search_lda.best_params_)
+            params = grid_search_lda.best_params_
+        else:
+            params = dict(solver='svd')
+            print(params)
+            model = LinearDiscriminantAnalysis(**params)
+    else:
+        model = LinearDiscriminantAnalysis()
+        params = {}
+        
+    return get_average_f1(model, df), params
+    
+#This creates the Logistic Regression model with or without hypertuning,
+#splits the training/test data and averages the f1 score over 10 runs
 
-# This creates a gradient boosting classifier model with or without hypertuning, 
-# splits the training/test data and averages the f1 score over 10 runs
-def gradient_boosting_accuracy(df,tuning=True):
+def logistic_regression_accuracy(df, tuning, originalRun):
+    if tuning:
+        if originalRun:
+            X, y = create_X_y(df)
+            X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.3)
+            param_grid_lr = {
+                'Cs': [100, 10, 1],
+                'cv': [3],
+                'penalty': ['l2'],
+                'scoring': ['f1'],
+                'solver': ['lbfgs', 'liblinear'],
+                'class_weight': ['balanced'],
+                'n_jobs': [-1],
+            }
+            lr_tuned = LogisticRegressionCV()
+            grid_search_lr = GridSearchCV(estimator=lr_tuned, param_grid=param_grid_lr, cv=3)
+            grid_search_lr.fit(X_train, Y_train)
+            print(grid_search_lr.best_params_)
+            model = LogisticRegressionCV(**grid_search_lr.best_params_)
+            params = grid_search_lr.best_params_
+        else:
+            params = dict(Cs=100,class_weight='balanced',cv=3,n_jobs=-1,penalty='l2',scoring='f1',solver='lbfgs')
+            print(params)
+            model = LogisticRegressionCV(**params)
+    else:
+        model = LogisticRegressionCV(cv=3, scoring='f1', class_weight='balanced', n_jobs=-1)
+        params = dict(cv=3,scoring='f1',class_weight='balanced',n_jobs=-1)
+        
+    return get_average_f1(model, df), params
+    
+#This creates the Bagging Algorithm model with or without hypertuning,
+#splits the training/test data and averages the f1 score over 10 runs
+def bagging_accuracy(df, tuning, originalRun):
+    if tuning:
+        if originalRun:
+            X, y = create_X_y(df)
+            X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.3)
+            param_grid_bag = {
+                'base_estimator': [GradientBoostingClassifier(max_depth=3,min_samples_leaf=3,n_estimators=300)],
+                'n_estimators': [10, 100, 1000]
+            }
+            bag_tuned = BaggingClassifier()
+            grid_search_bag = GridSearchCV(estimator=bag_tuned, param_grid=param_grid_bag, cv=3)
+            grid_search_bag.fit(X_train, Y_train)
+            print(grid_search_bag.best_params_)
+            model = BaggingClassifier(**grid_search_bag.best_params_)
+            params = grid_search_bag.best_params_
+        else:
+            params=dict(base_estimator=GradientBoostingClassifier(max_depth=3,min_samples_leaf=3,n_estimators=300),n_estimators=10)
+            print(params)
+            model = BaggingClassifier(**params)
+    else:
+        model = BaggingClassifier(GradientBoostingClassifier(max_depth=3,min_samples_leaf=3,n_estimators=300))
+        params = dict(base_estimator=GradientBoostingClassifier(max_depth=3,min_samples_leaf=3,n_estimators=300))
+    return get_average_f1(model, df), params
+    
+#This creates the Gradient Boosting model with or without hypertuning,
+#splits the training/test data and averages the f1 score over 10 runs
+def gradient_boosting_accuracy(df, tuning, originalRun):
     print('Evaluating gradient boosting model')
-    # Hyper parameter tuning code, it takes a while to run so we commented it out.
-    # The best parameters are specified and ran below when tuning is set to true
-    '''
-    param_grid_gb = {
-    'n_estimators': [300, 500],
-    'max_depth': [3, 5],
-    'min_samples_leaf': [2, 3]
-    }
-    gb_tuned = GradientBoostingClassifier()
-    grid_search_gb = GridSearchCV(estimator=gb_tuned, param_grid=param_grid_gb, cv=3)
-    grid_search_gb.fit(X_train, y_train)
-    
-    print(grid_search_gb.best_params_)
-    '''
-    # # The best parameters given were max_depth=3, min_samples_leaf=3, n_estimators=300
-    model = GradientBoostingClassifier(max_depth=3, min_samples_leaf=3, n_estimators=300) if tuning else GradientBoostingClassifier()
-    return get_average_f1(model,df)
-
-
-# This creates a decision tree classifier model with or without hypertuning, 
-# splits the training/test data and averages the f1 score over 10 runs
-def decision_tree_accuracy(df,tuning=True):
-    # Hyper parameter tuning code, it takes a while to run so we commented it out.
-    # The best parameters are specified and ran below when tuning is set to true
-    '''
-    dtree = DecisionTreeClassifier()
-    param_grid_dtree = {
-         'max_depth': [3, 5, 7, 10],
-         'min_samples_leaf': [1, 2, 3, 5],
-         'criterion': ["gini", "entropy"]
-    }
-    grid_search_dt = GridSearchCV(estimator=dtree, param_grid=param_grid_dtree, cv=3, scoring='f1')
-    grid_search_dt.fit(X_train, y_train)
-    print(grid_search_dt.best_params_)
-    '''
-
-    print('Evaluating Decision Tree Classifier model')
-    model = DecisionTreeClassifier(max_depth=5, min_samples_leaf=3, criterion='entropy') if tuning else DecisionTreeClassifier()
-    return get_average_f1(model,df)
-
-# This creates a knn classifier model with or without hypertuning, 
-# splits the training/test data and averages the f1 score over 10 runs
-def knn_accuracy(df,tuning=True, smote=True):
-    # Hyper parameter tuning code, it takes a while to run so we commented it out.
-    # The best parameters are specified and ran below when tuning is set to true
-    '''
-    knn_tuned = KNeighborsClassifier()
-    param_grid_knn = {
-        'leaf_size': [3, 5, 10, 20],
-        'n_neighbors': [2, 3, 5],
-        'p': [1,2]}
-    grid_search_knn = GridSearchCV(estimator=knn_tuned, param_grid=param_grid_knn)
-    grid_search_knn.fit(X_train,y_train)
-    print(grid_search_knn.best_params_)
-    '''
-    print('Evaluating KNeighborsClassifier (KNN) model with SMOTE=',smote)
-    model = KNeighborsClassifier(metric='manhattan', n_neighbors=2, weights='distance') if tuning else KNeighborsClassifier()
-    return get_average_f1(model, df,smote)
-
-# This creates an SVM classifier model with or without hypertuning, 
-# splits the training/test data and averages the f1 score over 10 runs
-def svm_accuracy(df,tuning=True,smote=True):
-    # Hyper parameter tuning code, it takes a while to run so we commented it out.
-    # The best parameters are specified and ran below when tuning is set to true
-    '''
-    SVM with SMOTE and hyperparameter tuning
-    param_grid_svm = {
-    'C': [0.1, 1, 10, 100],
-    'gamma': [1, 0.1, 0.01, 0.001],
-    'kernel': ['rbf', 'poly']}
-    svm = SVC()
-    grid_search_svm = GridSearchCV(estimator=svm, param_grid=param_grid_svm)
-    grid_search_svm.fit(X_train_SMOTE, y_train_SMOTE)
-    print(grid_search_svm.best_params_)
-    '''
-    
-    print('Evaluating SVM model with SMOTE=',smote)
-    model = SVC(C=10, gamma=0.001) if tuning else SVC()
-    return get_average_f1(model,df, smote)
+    if tuning:
+        if originalRun:
+            X, y = create_X_y(df)
+            X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.3)
+            param_grid_gb = {
+                'n_estimators': [300, 500],
+                'max_depth': [3, 5],
+                'min_samples_leaf': [2, 3]
+            }
+            gb_tuned = GradientBoostingClassifier()
+            grid_search_gb = GridSearchCV(estimator=gb_tuned, param_grid=param_grid_gb, cv=3)
+            grid_search_gb.fit(X_train, Y_train)
+            print(grid_search_gb.best_params_)
+            model = GradientBoostingClassifier(**grid_search_gb.best_params_)
+            params = grid_search_gb.best_params_
+        else:
+            params=dict(max_depth=3,min_samples_leaf=3,n_estimators=300)
+            print(params)
+            model = GradientBoostingClassifier(**params)
+    else:
+        model = GradientBoostingClassifier()
+        params = {}
+    return get_average_f1(model,df), params
